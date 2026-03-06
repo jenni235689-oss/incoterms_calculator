@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incoterms Freight Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8f8f6;
+    --surface: #ffffff;
+    --border: #e2e2dd;
+    --border-strong: #c8c8c0;
+    --ink: #1a1a18;
+    --ink2: #4a4a44;
+    --muted: #8a8a82;
+    --seller: #1d6340;
+    --seller-bg: #f0f7f3;
+    --buyer: #1a4f7a;
+    --buyer-bg: #f0f5fb;
+    --warn: #7a4f1a;
+    --warn-bg: #fbf6f0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .header-left { display: flex; align-items: baseline; gap: 10px; }
+
+  .header-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .header-tag {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .perspective-toggle {
+    display: flex;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .persp-btn {
+    padding: 7px 18px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .persp-btn + .persp-btn { border-left: 1px solid var(--border-strong); }
+
+  .persp-btn.active-seller { background: var(--seller-bg); color: var(--seller); font-weight: 600; }
+  .persp-btn.active-buyer  { background: var(--buyer-bg);  color: var(--buyer);  font-weight: 600; }
+
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 24px 60px;
+    display: grid;
+    grid-template-columns: 296px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .card-head {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .card-body { padding: 14px; }
+
+  .tab-row { display: flex; gap: 6px; margin-bottom: 14px; }
+
+  .tab-btn {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink2);
+    transition: all 0.12s;
+    text-align: center;
+  }
+
+  .tab-btn.active { background: var(--ink); border-color: var(--ink); color: white; }
+  .tab-btn:hover:not(.active) { border-color: var(--ink2); }
+
+  .incoterm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .incoterm-btn {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    padding: 9px 6px 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.12s;
+    border-radius: 5px;
+  }
+
+  .incoterm-btn:hover:not(.active) { border-color: var(--ink2); background: var(--surface); }
+  .incoterm-btn.active { border-color: var(--ink); background: var(--ink); color: white; }
+
+  .icode {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  .iname {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 400;
+    color: var(--muted);
+    margin-top: 3px;
+    line-height: 1.3;
+  }
+
+  .incoterm-btn.active .iname { color: rgba(255,255,255,0.55); }
+
+  .desc-title { font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 5px; }
+  .desc-body  { font-size: 12px; line-height: 1.65; color: var(--ink2); }
+
+  .journey-wrap { padding: 14px; padding-top: 10px; }
+
+  .journey {
+    display: flex;
+    align-items: center;
+    position: relative;
+    height: 44px;
+    margin-bottom: 6px;
+  }
+
+  .j-track {
+    position: absolute; left: 0; right: 0;
+    height: 2px; background: var(--border);
+    top: 50%; transform: translateY(-50%); z-index: 0;
+  }
+
+  .j-fill {
+    position: absolute; left: 0;
+    height: 2px; background: var(--ink);
+    top: 50%; transform: translateY(-50%); z-index: 1;
+    transition: width 0.3s ease;
+  }
+
+  .j-node {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; align-items: center;
+    flex: 1;
+  }
+
+  .j-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 2px solid var(--border); background: var(--surface);
+    transition: all 0.2s;
+  }
+
+  .j-dot.done     { background: var(--ink); border-color: var(--ink); }
+  .j-dot.transfer { background: var(--surface); border-color: var(--ink); border-width: 3px; box-shadow: 0 0 0 3px rgba(26,26,24,0.1); }
+
+  .j-lbl {
+    position: absolute; bottom: -14px;
+    font-size: 9px; color: var(--muted);
+    white-space: nowrap; letter-spacing: 0.02em;
+  }
+
+  .j-transfer-label {
+    font-size: 11px; color: var(--ink2); font-weight: 500;
+    padding-top: 20px; letter-spacing: 0.01em;
+  }
+
+  /* Results */
+  .results-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+
+  .results-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .results-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+
+  .results-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .results-sub strong { font-weight: 600; }
+  .results-sub.seller strong { color: var(--seller); }
+  .results-sub.buyer  strong { color: var(--buyer); }
+
+  .incoterm-pill {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 4px 12px; border-radius: 4px;
+    background: var(--ink); color: white; flex-shrink: 0;
+  }
+
+  /* Table */
+  .col-header {
+    display: grid;
+    grid-template-columns: 1fr 76px 90px;
+    padding: 7px 18px;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .col-header span:nth-child(2),
+  .col-header span:nth-child(3) { text-align: center; }
+
+  .section-row {
+    display: grid;
+    grid-template-columns: 1fr 76px 90px;
+    padding: 5px 18px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .charge-row {
+    display: grid;
+    grid-template-columns: 1fr 76px 90px;
+    padding: 9px 18px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    transition: background 0.1s;
+  }
+
+  .charge-row:last-child { border-bottom: none; }
+  .charge-row:hover { background: var(--bg); }
+  .charge-row.highlight { background: #f6fdf8; }
+  .charge-row.highlight-buyer { background: #f4f8fd; }
+  .charge-row.highlight:hover { background: #edfaf2; }
+  .charge-row.highlight-buyer:hover { background: #e8f2fb; }
+
+  .c-name {
+    font-size: 12.5px; font-weight: 400; color: var(--ink);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+
+  .c-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 5px;
+  }
+
+  .c-dot.seller { background: var(--seller); }
+  .c-dot.buyer  { background: var(--buyer); }
+  .c-dot.shared { background: var(--warn); }
+
+  .c-note {
+    font-size: 11px; color: var(--muted);
+    display: block; margin-top: 2px; font-style: italic;
+  }
+
+  .c-party {
+    font-size: 11px; font-weight: 500;
+    padding: 2px 7px; border-radius: 3px;
+    text-align: center; margin: 0 auto; display: block; width: fit-content;
+  }
+
+  .c-party.seller { background: var(--seller-bg); color: var(--seller); }
+  .c-party.buyer  { background: var(--buyer-bg);  color: var(--buyer); }
+  .c-party.shared { background: var(--warn-bg);   color: var(--warn); }
+
+  .c-include { font-size: 11.5px; font-weight: 600; text-align: center; }
+  .c-include.yes-seller { color: var(--seller); }
+  .c-include.yes-buyer  { color: var(--buyer); }
+  .c-include.no  { color: var(--border-strong); }
+
+  .summary-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--border);
+  }
+
+  .s-cell {
+    padding: 14px 18px; text-align: center;
+    border-right: 1px solid var(--border);
+  }
+
+  .s-cell:last-child { border-right: none; }
+
+  .s-num {
+    font-size: 22px; font-weight: 600;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+
+  .s-num.seller { color: var(--seller); }
+  .s-num.buyer  { color: var(--buyer); }
+  .s-num.neutral { color: var(--ink2); }
+
+  .s-lbl {
+    font-size: 10px; color: var(--muted); margin-top: 3px;
+    font-weight: 500; letter-spacing: 0.03em; text-transform: uppercase;
+  }
+
+  .empty {
+    padding: 64px 24px; text-align: center;
+    color: var(--muted); font-size: 12px; letter-spacing: 0.03em;
+  }
+
+  @media (max-width: 700px) {
+    .container { grid-template-columns: 1fr; padding: 14px; }
+    .header { padding: 14px 16px; flex-wrap: wrap; gap: 10px; }
+    .perspective-toggle { width: 100%; }
+    .persp-btn { flex: 1; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span class="header-title">Incoterms Charge Calculator</span>
+    <span class="header-tag">ICC 2020</span>
+  </div>
+  <div class="perspective-toggle">
+    <button class="persp-btn active-seller" id="persp-seller" onclick="setPerspective('seller')">I am the Seller</button>
+    <button class="persp-btn" id="persp-buyer" onclick="setPerspective('buyer')">I am the Buyer</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="sidebar">
+    <div class="card">
+      <div class="card-head">Transport Mode</div>
+      <div class="card-body" style="padding-bottom:0;">
+        <div class="tab-row">
+          <button class="tab-btn active" id="mode-any" onclick="setMode('any')">Any Mode</button>
+          <button class="tab-btn" id="mode-sea" onclick="setMode('sea')">Sea Only</button>
+        </div>
+        <div class="incoterm-grid" id="incoterm-grid"></div>
+        <div style="height:14px;"></div>
+      </div>
+    </div>
+
+    <div class="card" id="desc-card" style="display:none;">
+      <div class="card-head">About this Incoterm</div>
+      <div class="card-body">
+        <div class="desc-title" id="desc-title"></div>
+        <div class="desc-body" id="desc-body"></div>
+      </div>
+    </div>
+
+    <div class="card" id="journey-card" style="display:none;">
+      <div class="card-head">Risk Transfer Point</div>
+      <div class="journey-wrap">
+        <div class="journey" id="journey"></div>
+        <div class="j-transfer-label" id="j-transfer-label"></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="results-card" id="results-card">
+      <div class="empty" id="empty-state">Select an Incoterm to see the charge breakdown</div>
+      <div id="results-inner" style="display:none;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const INCOTERMS = {
+  any: [
+    {
+      code:'EXW', name:'Ex Works',
+      desc:'Minimum seller obligation. Goods made available at seller\'s premises. Buyer arranges everything — loading, export clearance, all transport, and import.',
+      transfer:'At seller\'s premises', transferPct:0,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Loading at seller\'s premises',       seller:false, buyer:true,  note:'Buyer arranges and pays for loading'},
+        {section:'Origin',  name:'Inland transport to port/terminal',   seller:false, buyer:true,  note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:false, buyer:true,  note:'Buyer responsible for export formalities'},
+        {section:'Freight', name:'Origin terminal handling (THC)',      seller:false, buyer:true,  note:null},
+        {section:'Freight', name:'International freight',               seller:false, buyer:true,  note:null},
+        {section:'Freight', name:'Cargo insurance',                     seller:false, buyer:true,  note:null},
+        {section:'Destination', name:'Destination terminal handling (THC)', seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Import customs clearance & duties',   seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Inland transport to destination',     seller:false, buyer:true, note:null},
+      ]
+    },
+    {
+      code:'FCA', name:'Free Carrier',
+      desc:'Seller delivers to a named carrier or place and clears for export. Flexible — suits containerised and multimodal shipments. Buyer arranges main carriage.',
+      transfer:'Named place (carrier handover)', transferPct:20,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Loading at seller\'s premises',       seller:true,  buyer:false, note:'If handover at seller\'s site'},
+        {section:'Origin',  name:'Inland transport to named place',     seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Origin terminal handling (THC)',      seller:false, buyer:true,  note:'Buyer arranges main carriage from here'},
+        {section:'Freight', name:'International freight',               seller:false, buyer:true,  note:null},
+        {section:'Freight', name:'Cargo insurance',                     seller:false, buyer:true,  note:'Not obligatory — buyer bears transit risk'},
+        {section:'Destination', name:'Destination terminal handling (THC)', seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Import customs clearance & duties',   seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Inland transport to destination',     seller:false, buyer:true, note:null},
+      ]
+    },
+    {
+      code:'CPT', name:'Carriage Paid To',
+      desc:'Seller pays freight to named destination. Risk transfers at first carrier handover — earlier than cost obligation. Seller pays freight but buyer bears transit risk.',
+      transfer:'First carrier handover (origin)', transferPct:20,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Inland transport to carrier',         seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Origin terminal handling (THC)',      seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'International freight to named place',seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Cargo insurance',                     seller:false, buyer:true,  note:'Seller NOT obliged — buyer bears transit risk'},
+        {section:'Destination', name:'Destination terminal handling (THC)', seller:'shared', buyer:'shared', note:'Often bundled in freight — confirm with carrier'},
+        {section:'Destination', name:'Import customs clearance & duties',   seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Inland transport to destination',     seller:false, buyer:true, note:null},
+      ]
+    },
+    {
+      code:'CIP', name:'Carriage & Insurance Paid',
+      desc:'Same as CPT but seller MUST provide cargo insurance (ICC "A" all-risk minimum). Preferred for high-value goods. Risk still transfers at first carrier handover.',
+      transfer:'First carrier handover (origin)', transferPct:20,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Inland transport to carrier',         seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Origin terminal handling (THC)',      seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'International freight to named place',seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Cargo insurance (ICC "A" all-risk)',  seller:true,  buyer:false, note:'Mandatory — seller must obtain minimum ICC A cover'},
+        {section:'Destination', name:'Destination terminal handling (THC)', seller:'shared', buyer:'shared', note:'Often bundled in freight — confirm with carrier'},
+        {section:'Destination', name:'Import customs clearance & duties',   seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Inland transport to destination',     seller:false, buyer:true, note:null},
+      ]
+    },
+    {
+      code:'DAP', name:'Delivered at Place',
+      desc:'Seller delivers to named destination ready for unloading. Seller bears all cost and risk to that point. Buyer pays import duties and unloading.',
+      transfer:'Named place of destination', transferPct:85,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Inland transport to port',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Origin terminal handling (THC)',      seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'International freight',               seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Cargo insurance',                     seller:true,  buyer:false, note:'Not obligatory but seller bears risk — strongly advised'},
+        {section:'Destination', name:'Destination terminal handling (THC)', seller:true, buyer:false, note:null},
+        {section:'Destination', name:'Inland transport to named place',     seller:true, buyer:false, note:null},
+        {section:'Destination', name:'Unloading at destination',           seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Import customs clearance & duties',  seller:false, buyer:true, note:null},
+      ]
+    },
+    {
+      code:'DPU', name:'Delivered at Place Unloaded',
+      desc:'Seller delivers and unloads at the named place. The only Incoterm requiring seller to unload. Full door-to-door responsibility for the seller.',
+      transfer:'Named place — after unloading', transferPct:90,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Inland transport to port',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Origin terminal handling (THC)',      seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'International freight',               seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Cargo insurance',                     seller:true,  buyer:false, note:'Seller bears risk to destination — strongly recommended'},
+        {section:'Destination', name:'Destination terminal handling (THC)', seller:true, buyer:false, note:null},
+        {section:'Destination', name:'Inland transport to named place',     seller:true, buyer:false, note:null},
+        {section:'Destination', name:'Unloading at destination',           seller:true, buyer:false, note:'Seller MUST arrange and pay for unloading'},
+        {section:'Destination', name:'Import customs clearance & duties',  seller:false, buyer:true, note:null},
+      ]
+    },
+    {
+      code:'DDP', name:'Delivered Duty Paid',
+      desc:'Maximum seller obligation. Seller delivers cleared for import, all duties paid, ready for unloading. Not recommended if seller cannot handle import formalities in buyer\'s country.',
+      transfer:'Named place — duty paid', transferPct:90,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Inland transport to port',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Origin terminal handling (THC)',      seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'International freight',               seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Cargo insurance',                     seller:true,  buyer:false, note:'Seller bears risk throughout — essential'},
+        {section:'Destination', name:'Destination terminal handling (THC)', seller:true, buyer:false, note:null},
+        {section:'Destination', name:'Import customs clearance & duties',  seller:true, buyer:false, note:'Seller pays all import taxes, VAT, and duties'},
+        {section:'Destination', name:'Inland transport to destination',    seller:true, buyer:false, note:null},
+        {section:'Destination', name:'Unloading at destination',          seller:false, buyer:true, note:'Buyer arranges unloading'},
+      ]
+    },
+  ],
+  sea: [
+    {
+      code:'FAS', name:'Free Alongside Ship',
+      desc:'Seller delivers goods alongside the vessel at the origin port. Risk transfers at quayside. Used for bulk, break-bulk, or heavy-lift cargo.',
+      transfer:'Alongside vessel at origin port', transferPct:30,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Inland transport to origin port',     seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Port charges to quayside',            seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Loading on vessel (stevedoring)',     seller:false, buyer:true,  note:null},
+        {section:'Freight', name:'International sea freight',           seller:false, buyer:true,  note:null},
+        {section:'Freight', name:'Cargo insurance',                     seller:false, buyer:true,  note:null},
+        {section:'Destination', name:'Unloading & destination THC',        seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Import customs clearance & duties',  seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Inland transport to destination',    seller:false, buyer:true, note:null},
+      ]
+    },
+    {
+      code:'FOB', name:'Free On Board',
+      desc:'Seller delivers on board the vessel at the origin port. Risk transfers once goods are on board. The most widely used Incoterm globally for sea freight.',
+      transfer:'On board vessel at origin port', transferPct:42,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Inland transport to origin port',     seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Origin port handling (THC)',          seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Loading on vessel',                   seller:true,  buyer:false, note:'Risk transfers once goods are on board'},
+        {section:'Freight', name:'International sea freight',           seller:false, buyer:true,  note:null},
+        {section:'Freight', name:'Cargo insurance',                     seller:false, buyer:true,  note:null},
+        {section:'Destination', name:'Destination port handling (THC)',    seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Import customs clearance & duties',  seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Inland transport to destination',    seller:false, buyer:true, note:null},
+      ]
+    },
+    {
+      code:'CFR', name:'Cost & Freight',
+      desc:'Seller pays freight to the named destination port. Risk transfers on board at origin — same point as FOB. Seller pays freight but buyer bears transit risk.',
+      transfer:'On board vessel at origin port', transferPct:42,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Inland transport to origin port',     seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Origin port handling (THC)',          seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'International sea freight',           seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Cargo insurance',                     seller:false, buyer:true,  note:'Seller NOT obliged — buyer carries transit risk'},
+        {section:'Destination', name:'Destination port handling (THC)',    seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Import customs clearance & duties',  seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Inland transport to destination',    seller:false, buyer:true, note:null},
+      ]
+    },
+    {
+      code:'CIF', name:'Cost, Insurance & Freight',
+      desc:'Same as CFR but seller must provide cargo insurance (ICC "C" minimum). Risk still transfers on board at origin — seller insures for buyer\'s benefit during transit.',
+      transfer:'On board vessel at origin port', transferPct:42,
+      charges:[
+        {section:'Origin',  name:'Export packing & marking',            seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Inland transport to origin port',     seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Export customs clearance & duties',   seller:true,  buyer:false, note:null},
+        {section:'Origin',  name:'Origin port handling (THC)',          seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'International sea freight',           seller:true,  buyer:false, note:null},
+        {section:'Freight', name:'Cargo insurance (ICC "C" minimum)',   seller:true,  buyer:false, note:'Mandatory — min. ICC C cover. Buyer may want to upgrade.'},
+        {section:'Destination', name:'Destination port handling (THC)',    seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Import customs clearance & duties',  seller:false, buyer:true, note:null},
+        {section:'Destination', name:'Inland transport to destination',    seller:false, buyer:true, note:null},
+      ]
+    },
+  ]
+};
+
+const JOURNEY_NODES = [
+  {label:'Factory', pct:0},
+  {label:'Origin Port', pct:33},
+  {label:'On Board', pct:50},
+  {label:'Dest. Port', pct:75},
+  {label:'Delivered', pct:100},
+];
+
+let currentMode = 'any';
+let currentCode = null;
+let currentPersp = 'seller';
+
+function setPerspective(p) {
+  currentPersp = p;
+  document.getElementById('persp-seller').className = 'persp-btn' + (p === 'seller' ? ' active-seller' : '');
+  document.getElementById('persp-buyer').className  = 'persp-btn' + (p === 'buyer'  ? ' active-buyer'  : '');
+  if (currentCode) selectIncoterm(currentCode);
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-any').classList.toggle('active', mode === 'any');
+  document.getElementById('mode-sea').classList.toggle('active', mode === 'sea');
+  currentCode = null;
+  renderGrid();
+  document.getElementById('empty-state').style.display = '';
+  document.getElementById('results-inner').style.display = 'none';
+  document.getElementById('desc-card').style.display = 'none';
+  document.getElementById('journey-card').style.display = 'none';
+}
+
+function renderGrid() {
+  const grid = document.getElementById('incoterm-grid');
+  grid.innerHTML = '';
+  INCOTERMS[currentMode].forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'incoterm-btn' + (t.code === currentCode ? ' active' : '');
+    b.innerHTML = `<span class="icode">${t.code}</span><span class="iname">${t.name}</span>`;
+    b.onclick = () => selectIncoterm(t.code);
+    grid.appendChild(b);
+  });
+}
+
+function selectIncoterm(code) {
+  currentCode = code;
+  renderGrid();
+  const t = INCOTERMS[currentMode].find(x => x.code === code);
+  if (!t) return;
+
+  document.getElementById('desc-card').style.display = '';
+  document.getElementById('desc-title').textContent  = `${t.code} — ${t.name}`;
+  document.getElementById('desc-body').textContent   = t.desc;
+
+  document.getElementById('journey-card').style.display = '';
+  renderJourney(t.transferPct, t.transfer);
+  renderResults(t);
+}
+
+function renderJourney(pct, label) {
+  const j = document.getElementById('journey');
+  j.innerHTML = `<div class="j-track"></div><div class="j-fill" style="width:${pct}%"></div>`;
+  JOURNEY_NODES.forEach(node => {
+    const el = document.createElement('div');
+    el.className = 'j-node';
+    const done = node.pct < pct;
+    const isT  = Math.abs(node.pct - pct) < 12;
+    el.innerHTML = `<div class="j-dot ${isT ? 'transfer' : done ? 'done' : ''}"></div><span class="j-lbl">${node.label}</span>`;
+    j.appendChild(el);
+  });
+  document.getElementById('j-transfer-label').textContent = `Transfer point: ${label}`;
+}
+
+function getInclude(c, persp) {
+  if (persp === 'seller') return c.seller === true || c.seller === 'shared';
+  return c.buyer === true || c.buyer === 'shared';
+}
+
+function renderResults(t) {
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('results-inner').style.display = '';
+
+  const isSeller = currentPersp === 'seller';
+  const perspLabel = isSeller ? 'Seller' : 'Buyer';
+  const colLabel   = isSeller ? 'Include in quote?' : 'Budget for?';
+
+  // Group by section
+  const sections = {};
+  t.charges.forEach(c => {
+    if (!sections[c.section]) sections[c.section] = [];
+    sections[c.section].push(c);
+  });
+
+  const included = t.charges.filter(c => getInclude(c, currentPersp)).length;
+  const excluded  = t.charges.length - included;
+
+  let html = `
+    <div class="results-head">
+      <div>
+        <div class="results-name">${t.name}</div>
+        <div class="results-sub ${currentPersp}">
+          Charges the <strong>${perspLabel}</strong> is responsible for under ${t.code}
+        </div>
+      </div>
+      <div class="incoterm-pill">${t.code}</div>
+    </div>
+    <div class="col-header">
+      <span>Charge</span><span>Paid by</span><span>${colLabel}</span>
+    </div>
+  `;
+
+  Object.entries(sections).forEach(([section, charges]) => {
+    html += `<div class="section-row"><span>${section}</span><span></span><span></span></div>`;
+    charges.forEach(c => {
+      const include = getInclude(c, currentPersp);
+      let party, partyClass;
+      if      (c.seller === true  && c.buyer  === false) { party = 'Seller'; partyClass = 'seller'; }
+      else if (c.buyer  === true  && c.seller === false) { party = 'Buyer';  partyClass = 'buyer'; }
+      else                                                { party = 'Shared'; partyClass = 'shared'; }
+
+      const highlightClass = include ? (isSeller ? ' highlight' : ' highlight-buyer') : '';
+      const includeClass   = include ? (isSeller ? 'yes-seller' : 'yes-buyer') : 'no';
+      const includeText    = include ? '✓ Yes' : '✗ No';
+
+      html += `
+        <div class="charge-row${highlightClass}">
+          <div class="c-name">
+            <div class="c-dot ${partyClass}"></div>
+            <div>
+              ${c.name}
+              ${c.note ? `<span class="c-note">${c.note}</span>` : ''}
+            </div>
+          </div>
+          <div style="text-align:center;">
+            <span class="c-party ${partyClass}">${party}</span>
+          </div>
+          <div class="c-include ${includeClass}">${includeText}</div>
+        </div>
+      `;
+    });
+  });
+
+  html += `
+    <div class="summary-bar">
+      <div class="s-cell">
+        <div class="s-num ${currentPersp}">${included}</div>
+        <div class="s-lbl">${perspLabel} covers</div>
+      </div>
+      <div class="s-cell">
+        <div class="s-num neutral">${excluded}</div>
+        <div class="s-lbl">Other party</div>
+      </div>
+      <div class="s-cell">
+        <div class="s-num neutral">${t.charges.length}</div>
+        <div class="s-lbl">Total charges</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('results-inner').innerHTML = html;
+}
+
+renderGrid();
+</script>
+</body>
+</html>
